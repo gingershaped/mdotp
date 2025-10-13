@@ -30,7 +30,7 @@ pub enum PresenceError {
     NotTracked(#[serde(skip)] OwnedUserId),
 
     #[error("internal Matrix error")]
-    RequestError(#[from] #[serde(skip)] matrix_sdk::Error),
+    InternalError(#[from] #[serde(skip)] matrix_sdk::Error),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
