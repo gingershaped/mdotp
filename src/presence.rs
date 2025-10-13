@@ -1,16 +1,11 @@
-use std::{
-    collections::HashMap,
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use matrix_sdk::{
     Room,
     event_handler::EventHandlerDropGuard,
     ruma::{
         OwnedMxcUri, OwnedUserId, UserId,
-        api::client::
-            presence::get_presence
-        ,
+        api::client::presence::get_presence,
         events::{
             presence::PresenceEvent,
             room::member::{MembershipState, SyncRoomMemberEvent},
@@ -21,7 +16,7 @@ use matrix_sdk::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::{RwLock, watch};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 #[derive(Error, Debug, Serialize)]
 #[serde(tag = "error", rename_all = "snake_case")]
@@ -30,7 +25,14 @@ pub enum PresenceError {
     NotTracked(#[serde(skip)] OwnedUserId),
 
     #[error("internal Matrix error")]
-    InternalError(#[from] #[serde(skip)] matrix_sdk::Error),
+    InternalError(#[serde(skip)] matrix_sdk::Error),
+}
+
+impl From<matrix_sdk::Error> for PresenceError {
+    fn from(value: matrix_sdk::Error) -> Self {
+        error!(?value, "matrix sdk error");
+        PresenceError::InternalError(value)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -84,20 +86,22 @@ impl Presences {
                                     debug!(?user_id, "user left the room");
                                     let mut presence_senders = presence_senders.write().await;
                                     presence_senders.remove(event.state_key());
-                                },
+                                }
                                 MembershipState::Join => {
                                     if let Some(event) = event.as_original() {
                                         let presence_senders = presence_senders.read().await;
                                         if let Some(tx) = presence_senders.get(&event.sender) {
                                             debug!(?user_id, ?event.content, "new user profile");
                                             tx.send_modify(|presence| {
-                                                presence.avatar_url = event.content.avatar_url.clone();
-                                                presence.displayname = event.content.displayname.clone();
+                                                presence.avatar_url =
+                                                    event.content.avatar_url.clone();
+                                                presence.displayname =
+                                                    event.content.displayname.clone();
                                             });
                                         }
                                     }
                                 }
-                                _ => {},
+                                _ => {}
                             }
                         },
                     ))
@@ -140,7 +144,7 @@ impl Presences {
             Ok(tx.subscribe())
         } else {
             drop(presence_senders);
-            
+
             let initial_presence = self.current_presence(user_id).await?;
             info!(?user_id, "adding new presence channel");
             debug!(?user_id, ?initial_presence, "initial presence");
@@ -156,7 +160,12 @@ impl Presences {
     }
 
     async fn current_presence(&self, user_id: &UserId) -> Result<Presence, PresenceError> {
-        let Some(member) = self.room.get_member(user_id).await? else {
+        let Some(member) = self
+            .room
+            .get_member(user_id)
+            .await?
+            .filter(|member| *member.membership() == MembershipState::Join)
+        else {
             return Err(PresenceError::NotTracked(user_id.to_owned()));
         };
 
