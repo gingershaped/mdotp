@@ -50,5 +50,7 @@ async fn user_ws(
                 break;
             }
         }
+        
+        let _ = ws.send(Message::Close(None)).await;
     }))
 }

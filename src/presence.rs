@@ -88,7 +88,7 @@ impl Presences {
                                 MembershipState::Leave => {
                                     debug!(?user_id, "user left the room");
                                     let mut presence_senders = presence_senders.write().await;
-                                    presence_senders.remove(event.state_key());
+                                    let _ = presence_senders.remove(event.state_key());
                                 }
                                 MembershipState::Join => {
                                     if let Some(event) = event.as_original() {
