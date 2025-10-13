@@ -24,6 +24,9 @@ pub enum PresenceError {
     #[error("mdotp is not tracking this user")]
     NotTracked(#[serde(skip)] OwnedUserId),
 
+    #[error("presence information is unavailable for this user")]
+    PresenceUnavailable(#[serde(skip)] OwnedUserId),
+
     #[error("internal Matrix error")]
     InternalError(#[serde(skip)] matrix_sdk::Error),
 }
@@ -174,7 +177,7 @@ impl Presences {
             .client()
             .send(get_presence::v3::Request::new(user_id.to_owned()))
             .await
-            .map_err(matrix_sdk::Error::from)?;
+            .map_err(|_| PresenceError::PresenceUnavailable(user_id.to_owned()))?;
 
         Ok(Presence {
             avatar_url: member.avatar_url().map(ToOwned::to_owned),
