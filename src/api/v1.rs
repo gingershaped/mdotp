@@ -19,7 +19,7 @@ pub fn routes() -> Router<Arc<AppState>> {
 async fn user(
     State(state): State<Arc<AppState>>,
     Path(user_id): Path<OwnedUserId>,
-) -> Result<Json<Presence>, Json<PresenceError>> {
+) -> Result<Json<Presence>, PresenceError> {
     Ok(Json(
         state
             .presences
@@ -34,7 +34,7 @@ async fn user_ws(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
     Path(user_id): Path<OwnedUserId>,
-) -> Result<Response, Json<PresenceError>> {
+) -> Result<Response, PresenceError> {
     let mut rx = state.presences.presence_for(&user_id).await?;
 
     Ok(ws.on_upgrade(|mut ws| async move {
