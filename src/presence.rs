@@ -1,22 +1,22 @@
 use std::{collections::HashMap, sync::Arc};
 
 use matrix_sdk::{
-    Room,
-    event_handler::EventHandlerDropGuard,
-    ruma::{
-        OwnedMxcUri, OwnedUserId, UserId,
-        api::client::presence::get_presence,
-        events::{
-            presence::PresenceEvent,
-            room::member::{MembershipState, SyncRoomMemberEvent},
-        },
-        presence::PresenceState,
-    },
+    event_handler::EventHandlerDropGuard, ruma::{
+        api::client::presence::get_presence, events::{
+            direct::DirectUserIdentifier, presence::PresenceEvent, room::{
+                member::{
+                    MembershipChange, MembershipState, OriginalSyncRoomMemberEvent,
+                },
+                message::RoomMessageEventContent,
+            }
+        }, presence::PresenceState, OwnedMxcUri, OwnedUserId, UserId
+    }, Client, Room
 };
+use ruma_common::serde::Raw;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::{RwLock, watch};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 #[derive(Error, Debug, Serialize)]
 #[serde(tag = "error", rename_all = "snake_case")]
@@ -82,26 +82,41 @@ impl Presences {
                 {
                     let presence_senders = presence_senders.clone();
                     client.event_handler_drop_guard(room.add_event_handler(
-                        |event: SyncRoomMemberEvent| async move {
-                            let user_id = event.state_key();
-                            match *event.membership() {
+                        |event: OriginalSyncRoomMemberEvent, client: Client| async move {
+                            let user_id = &event.state_key;
+                            match event.content.membership {
                                 MembershipState::Leave => {
                                     debug!(?user_id, "user left the room");
                                     let mut presence_senders = presence_senders.write().await;
-                                    let _ = presence_senders.remove(event.state_key());
+                                    let _ = presence_senders.remove(user_id);
                                 }
                                 MembershipState::Join => {
-                                    if let Some(event) = event.as_original() {
-                                        let presence_senders = presence_senders.read().await;
-                                        if let Some(tx) = presence_senders.get(&event.sender) {
-                                            debug!(?user_id, ?event.content, "new user profile");
-                                            tx.send_modify(|presence| {
-                                                presence.avatar_url =
-                                                    event.content.avatar_url.clone();
-                                                presence.displayname =
-                                                    event.content.displayname.clone();
-                                            });
+                                    let presence_senders = presence_senders.read().await;
+
+                                    if matches!(
+                                        event.membership_change(),
+                                        MembershipChange::Joined
+                                            | MembershipChange::InvitationAccepted
+                                    ) {
+                                        debug!(?user_id, "user joined the room");
+                                        if let Err(err) =
+                                            Self::check_presence_available(&client, user_id).await
+                                        {
+                                            warn!(
+                                                ?user_id,
+                                                ?err,
+                                                "error checking presence availability"
+                                            )
                                         }
+                                    }
+
+                                    if let Some(tx) = presence_senders.get(&event.sender) {
+                                        debug!(?user_id, ?event.content, "new user profile");
+                                        tx.send_modify(|presence| {
+                                            presence.avatar_url = event.content.avatar_url.clone();
+                                            presence.displayname =
+                                                event.content.displayname.clone();
+                                        });
                                     }
                                 }
                                 _ => {}
@@ -135,6 +150,63 @@ impl Presences {
             presence_senders,
             _handlers: handlers,
         }
+    }
+
+    async fn check_presence_available(
+        client: &Client,
+        user_id: &UserId,
+    ) -> Result<(), matrix_sdk::Error> {
+        const NOTIFICATION_FLAG: &'static str =
+            "computer.gingershaped.mdotp.presence_unavailable_notified";
+        const PRESENCE_UNAVAILABLE_NOTICE: &'static str = concat!(
+            "<b>NOTICE:</b> Your homeserver does not currently publish presence information, so you will not be able ",
+            "to access your presence through mdotp. To resolve this, contact your homeserver's administrators."
+        );
+
+        let response = client
+            .send(get_presence::v3::Request::new(user_id.to_owned()))
+            .await;
+
+        if response.is_err() {
+            let dm_room = match Self::get_dm_room(&client, user_id) {
+                Some(room) => room,
+                None => client.create_dm(user_id).await?,
+            };
+
+            if dm_room
+                .account_data(NOTIFICATION_FLAG.into())
+                .await?
+                .is_none()
+            {
+                dm_room
+                    .send(RoomMessageEventContent::notice_html(
+                        PRESENCE_UNAVAILABLE_NOTICE,
+                        PRESENCE_UNAVAILABLE_NOTICE,
+                    ))
+                    .await?;
+                dm_room
+                    .set_account_data_raw(
+                        NOTIFICATION_FLAG.into(),
+                        Raw::new(&true).unwrap().cast_unchecked(),
+                    )
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    // copied from matrix-rust-sdk
+    fn get_dm_room(client: &Client, user_id: &UserId) -> Option<Room> {
+        let rooms = client.joined_rooms();
+
+        // Find the room we share with the `user_id` and only with `user_id`
+        let room = rooms.into_iter().find(|r| {
+            let targets = r.direct_targets();
+            targets.len() == 1 && targets.contains(<&DirectUserIdentifier>::from(user_id))
+        });
+
+        room
     }
 
     pub async fn presence_for(
