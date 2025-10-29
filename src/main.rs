@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let app: Router<()> = Router::new()
-        .nest("/v1/", api::v1::routes())
+        .nest("/api/", api::routes())
         .with_state(Arc::new(state));
 
     let listener = tokio::net::TcpListener::bind(environ.host.clone()).await?;

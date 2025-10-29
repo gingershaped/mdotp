@@ -1,6 +1,8 @@
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use std::sync::Arc;
 
-use crate::presence::PresenceError;
+use axum::{Json, Router, http::StatusCode, response::IntoResponse};
+
+use crate::{AppState, presence::PresenceError};
 
 pub mod v1;
 
@@ -15,4 +17,9 @@ impl IntoResponse for PresenceError {
 
         (status_code, Json(self)).into_response()
     }
+}
+
+pub fn routes() -> Router<Arc<AppState>> {
+    Router::new()
+        .nest("/v1/", v1::routes())
 }
