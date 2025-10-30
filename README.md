@@ -6,6 +6,8 @@ a bare-minimum matrix bot which lets you query your presence through a simple AP
 > [!WARNING]
 > not all homeservers send presence information over federation, which is necessary for mdotp to work. the mdotp
 > bot will DM you once you join the room if it detects that your homeserver doesn't send presence information.
+> whether or not your homeserver sends this information is entirely up to its administrators -- contact them
+> if you have further questions.
 
 all you have to do is join [#mdotp:gingershaped.computer](https://matrix.to/#/#mdotp:gingershaped.computer). you will then be able to access your presence at `https://mdotp.ginger.services/api/v1/<your mxid>`.
 
