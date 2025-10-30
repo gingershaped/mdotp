@@ -25,10 +25,12 @@ see https://spec.matrix.org/v1.16/client-server-api/#mpresence for the response 
 error responses will have a non-200 status code and the following schema:
 ```json
 {
-    "error": "<error code>"
+    "error": "<error code>",
+    "message": "<a human-readable message>"
 }
 ```
 possible error types:
+- `bad_request` (400): the URL or body of your request was invalid
 - `not_tracked` (404): the user you requested is not in the bot's room
 - `presence_unavailable` (400): the homeserver of the user you requested does not provide presence information
 - `internal_error` (500): internal server error. please open an issue on this repository.

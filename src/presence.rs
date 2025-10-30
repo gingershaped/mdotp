@@ -14,27 +14,30 @@ use matrix_sdk::{
 };
 use ruma_common::serde::Raw;
 use serde::{Deserialize, Serialize};
+use strum::IntoStaticStr;
 use thiserror::Error;
 use tokio::sync::{RwLock, watch};
 use tracing::{debug, error, info, warn};
 
-#[derive(Error, Debug, Serialize)]
-#[serde(tag = "error", rename_all = "snake_case")]
+#[derive(Error, Debug, IntoStaticStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum PresenceError {
     #[error("mdotp is not tracking this user")]
-    NotTracked(#[serde(skip)] OwnedUserId),
+    NotTracked(OwnedUserId),
 
     #[error("presence information is unavailable for this user")]
-    PresenceUnavailable(#[serde(skip)] OwnedUserId),
+    PresenceUnavailable(OwnedUserId),
 
     #[error("internal Matrix error")]
-    InternalError(#[serde(skip)] matrix_sdk::Error),
+    #[strum(serialize = "internal_error")]
+    SdkError(matrix_sdk::Error),
 }
+
 
 impl From<matrix_sdk::Error> for PresenceError {
     fn from(value: matrix_sdk::Error) -> Self {
         error!(?value, "matrix sdk error");
-        PresenceError::InternalError(value)
+        PresenceError::SdkError(value)
     }
 }
 

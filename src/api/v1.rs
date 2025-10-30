@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{ws::Message, Path, State, WebSocketUpgrade}, response::Response, routing::get, Json, Router
+    Json, Router, extract::{Path, State, WebSocketUpgrade, rejection::PathRejection, ws::Message}, response::Response, routing::get
 };
 use matrix_sdk::ruma::OwnedUserId;
 
 use crate::{
-    AppState,
-    presence::{Presence, PresenceError},
+    AppState, api::AppError, presence::Presence
 };
 
 pub fn routes() -> Router<Arc<AppState>> {
@@ -18,12 +17,12 @@ pub fn routes() -> Router<Arc<AppState>> {
 
 async fn user(
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<OwnedUserId>,
-) -> Result<Json<Presence>, PresenceError> {
+    user_id: Result<Path<OwnedUserId>, PathRejection>,
+) -> Result<Json<Presence>, AppError> {
     Ok(Json(
         state
             .presences
-            .presence_for(&user_id)
+            .presence_for(&user_id?)
             .await?
             .borrow()
             .clone(),
@@ -33,9 +32,9 @@ async fn user(
 async fn user_ws(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<OwnedUserId>,
-) -> Result<Response, PresenceError> {
-    let mut rx = state.presences.presence_for(&user_id).await?;
+    user_id: Result<Path<OwnedUserId>, PathRejection>,
+) -> Result<Response, AppError> {
+    let mut rx = state.presences.presence_for(&user_id?).await?;
 
     Ok(ws.on_upgrade(|mut ws| async move {
         loop {
