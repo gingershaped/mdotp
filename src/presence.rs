@@ -9,11 +9,11 @@ use matrix_sdk::{
                 },
                 message::RoomMessageEventContent,
             }
-        }, presence::PresenceState, OwnedMxcUri, OwnedUserId, UserId
+        }, OwnedUserId, UserId
     }, Client, Room
 };
+use mdotp_types::Presence;
 use ruma_common::serde::Raw;
-use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;
 use thiserror::Error;
 use tokio::sync::{RwLock, watch};
@@ -39,32 +39,6 @@ impl From<matrix_sdk::Error> for PresenceError {
         error!(?value, "matrix sdk error");
         PresenceError::SdkError(value)
     }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Presence {
-    /// The current avatar URL for this user.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub avatar_url: Option<OwnedMxcUri>,
-
-    /// The current display name for this user.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub displayname: Option<String>,
-
-    /// Whether or not the user is currently active.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub currently_active: Option<bool>,
-
-    /// The last time since this user performed some action, in milliseconds.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_active_ago: Option<u128>,
-
-    /// The presence state for this user.
-    pub presence: PresenceState,
-
-    /// An optional description to accompany the presence.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status_msg: Option<String>,
 }
 
 pub struct Presences {

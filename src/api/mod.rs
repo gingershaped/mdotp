@@ -1,61 +1,50 @@
 use std::sync::Arc;
 
 use axum::{Json, Router, extract::rejection::PathRejection, http::StatusCode, response::IntoResponse};
-use serde::Serialize;
 
 use crate::{AppState, presence::PresenceError};
 
 pub mod v1;
 
-#[derive(Serialize)]
-pub struct AppError {
-    #[serde(rename = "error")]
-    error_code: &'static str,
-    message: String,
-    #[serde(skip)]
-    status: StatusCode,
-}
+pub struct ErrorResponse(StatusCode, mdotp_types::Error<'static>);
 
-impl AppError {
-    const GENERIC_BAD_REQUEST_CODE: &'static str = "bad_request";
-
+impl ErrorResponse {
     pub fn generic_bad_request(message: impl ToString) -> Self {
-
-        Self {
-            error_code: Self::GENERIC_BAD_REQUEST_CODE,
-            message: message.to_string(),
-            status: StatusCode::BAD_REQUEST,
-        }
+        Self(
+            StatusCode::BAD_REQUEST,
+            mdotp_types::Error::generic_bad_request(message)
+        )
     }
 }
 
-impl IntoResponse for AppError {
+impl IntoResponse for ErrorResponse {
     fn into_response(self) -> axum::response::Response {
-        (self.status.clone(), Json(self)).into_response()
+        (self.0, Json(self.1)).into_response()
     }
 }
 
-impl From<PresenceError> for AppError {
+impl From<PresenceError> for ErrorResponse {
     fn from(value: PresenceError) -> Self {
-        AppError {
-            error_code: (&value).into(),
-            message: value.to_string(),
-            status: match value {
+        Self(
+            match value {
                 PresenceError::NotTracked(..) => StatusCode::NOT_FOUND,
                 PresenceError::PresenceUnavailable(..) => StatusCode::BAD_REQUEST,
                 PresenceError::SdkError(..) => StatusCode::INTERNAL_SERVER_ERROR,
+            },
+            mdotp_types::Error {
+                error_code: (&value).into(),
+                message: value.to_string(),
             }
-        }
+        )
     }
 }
 
-impl From<PathRejection> for AppError {
+impl From<PathRejection> for ErrorResponse {
     fn from(rejection: PathRejection) -> Self {
-        AppError {
-            error_code: Self::GENERIC_BAD_REQUEST_CODE,
-            message: rejection.body_text(),
-            status: rejection.status(),
-        }
+        Self(
+            rejection.status(),
+            mdotp_types::Error::generic_bad_request(rejection.body_text()),
+        )
     }
 }
 

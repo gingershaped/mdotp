@@ -1,0 +1,13 @@
+[package]
+name = "mdotp_types"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+ruma-common.workspace = true
+serde.workspace = true
+strum.workspace = true
+thiserror.workspace = true

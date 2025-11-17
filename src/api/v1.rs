@@ -4,9 +4,10 @@ use axum::{
     Json, Router, extract::{Path, State, WebSocketUpgrade, rejection::PathRejection, ws::Message}, response::Response, routing::get
 };
 use matrix_sdk::ruma::OwnedUserId;
+use mdotp_types::Presence;
 
 use crate::{
-    AppState, api::AppError, presence::Presence
+    AppState, api::ErrorResponse
 };
 
 pub fn routes() -> Router<Arc<AppState>> {
@@ -18,7 +19,7 @@ pub fn routes() -> Router<Arc<AppState>> {
 async fn user(
     State(state): State<Arc<AppState>>,
     user_id: Result<Path<OwnedUserId>, PathRejection>,
-) -> Result<Json<Presence>, AppError> {
+) -> Result<Json<Presence>, ErrorResponse> {
     Ok(Json(
         state
             .presences
@@ -33,7 +34,7 @@ async fn user_ws(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
     user_id: Result<Path<OwnedUserId>, PathRejection>,
-) -> Result<Response, AppError> {
+) -> Result<Response, ErrorResponse> {
     let mut rx = state.presences.presence_for(&user_id?).await?;
 
     Ok(ws.on_upgrade(|mut ws| async move {

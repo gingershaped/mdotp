@@ -1688,6 +1688,7 @@ dependencies = [
  "dotenvy",
  "envy",
  "matrix-sdk",
+ "mdotp_types",
  "ruma-common",
  "serde",
  "serde_json",
@@ -1697,6 +1698,16 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "mdotp_types"
+version = "0.1.0"
+dependencies = [
+ "ruma-common",
+ "serde",
+ "strum",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
