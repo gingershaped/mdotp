@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use axum::{
-    Json, Router, extract::{Path, State, WebSocketUpgrade, rejection::PathRejection, ws::Message}, response::Response, routing::get
+    Json, Router,
+    extract::{Path, State, WebSocketUpgrade, rejection::PathRejection, ws::Message},
+    response::Response,
+    routing::get,
 };
 use matrix_sdk::ruma::OwnedUserId;
 use mdotp_types::Presence;
 
-use crate::{
-    AppState, api::ErrorResponse
-};
+use crate::{AppState, api::ErrorResponse};
 
 pub fn routes() -> Router<Arc<AppState>> {
     Router::new()
@@ -50,7 +51,7 @@ async fn user_ws(
                 break;
             }
         }
-        
+
         let _ = ws.send(Message::Close(None)).await;
     }))
 }

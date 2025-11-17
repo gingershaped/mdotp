@@ -1,16 +1,20 @@
 use std::{collections::HashMap, sync::Arc};
 
 use matrix_sdk::{
-    event_handler::EventHandlerDropGuard, ruma::{
-        api::client::presence::get_presence, events::{
-            direct::DirectUserIdentifier, presence::PresenceEvent, room::{
-                member::{
-                    MembershipChange, MembershipState, OriginalSyncRoomMemberEvent,
-                },
+    Client, Room,
+    event_handler::EventHandlerDropGuard,
+    ruma::{
+        OwnedUserId, UserId,
+        api::client::presence::get_presence,
+        events::{
+            direct::DirectUserIdentifier,
+            presence::PresenceEvent,
+            room::{
+                member::{MembershipChange, MembershipState, OriginalSyncRoomMemberEvent},
                 message::RoomMessageEventContent,
-            }
-        }, OwnedUserId, UserId
-    }, Client, Room
+            },
+        },
+    },
 };
 use mdotp_types::Presence;
 use ruma_common::serde::Raw;
@@ -32,7 +36,6 @@ pub enum PresenceError {
     #[strum(serialize = "internal_error")]
     SdkError(matrix_sdk::Error),
 }
-
 
 impl From<matrix_sdk::Error> for PresenceError {
     fn from(value: matrix_sdk::Error) -> Self {
@@ -133,9 +136,8 @@ impl Presences {
         client: &Client,
         user_id: &UserId,
     ) -> Result<(), matrix_sdk::Error> {
-        const NOTIFICATION_FLAG: &'static str =
-            "computer.gingershaped.mdotp.presence_unavailable_notified";
-        const PRESENCE_UNAVAILABLE_NOTICE: &'static str = concat!(
+        const NOTIFICATION_FLAG: &str = "computer.gingershaped.mdotp.presence_unavailable_notified";
+        const PRESENCE_UNAVAILABLE_NOTICE: &str = concat!(
             "<b>NOTICE:</b> Your homeserver does not currently publish presence information, so you will not be able ",
             "to access your presence through mdotp. To resolve this, contact your homeserver's administrators."
         );
@@ -145,7 +147,7 @@ impl Presences {
             .await;
 
         if response.is_err() {
-            let dm_room = match Self::get_dm_room(&client, user_id) {
+            let dm_room = match Self::get_dm_room(client, user_id) {
                 Some(room) => room,
                 None => client.create_dm(user_id).await?,
             };
@@ -178,12 +180,11 @@ impl Presences {
         let rooms = client.joined_rooms();
 
         // Find the room we share with the `user_id` and only with `user_id`
-        let room = rooms.into_iter().find(|r| {
+
+        rooms.into_iter().find(|r| {
             let targets = r.direct_targets();
             targets.len() == 1 && targets.contains(<&DirectUserIdentifier>::from(user_id))
-        });
-
-        room
+        })
     }
 
     pub async fn presence_for(

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use axum::{Json, Router, extract::rejection::PathRejection, http::StatusCode, response::IntoResponse};
+use axum::{
+    Json, Router, extract::rejection::PathRejection, http::StatusCode, response::IntoResponse,
+};
 
 use crate::{AppState, presence::PresenceError};
 
@@ -12,7 +14,7 @@ impl ErrorResponse {
     pub fn generic_bad_request(message: impl ToString) -> Self {
         Self(
             StatusCode::BAD_REQUEST,
-            mdotp_types::Error::generic_bad_request(message)
+            mdotp_types::Error::generic_bad_request(message),
         )
     }
 }
@@ -34,7 +36,7 @@ impl From<PresenceError> for ErrorResponse {
             mdotp_types::Error {
                 error_code: (&value).into(),
                 message: value.to_string(),
-            }
+            },
         )
     }
 }

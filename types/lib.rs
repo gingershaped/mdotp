@@ -21,7 +21,6 @@ impl<'code> Error<'code> {
     const GENERIC_BAD_REQUEST_CODE: &'static str = "bad_request";
 
     pub fn generic_bad_request(message: impl ToString) -> Self {
-
         Self {
             error_code: Self::GENERIC_BAD_REQUEST_CODE,
             message: message.to_string(),
