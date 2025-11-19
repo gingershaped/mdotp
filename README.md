@@ -9,7 +9,7 @@ a bare-minimum matrix bot which lets you query your presence through a simple AP
 > whether or not your homeserver sends this information is entirely up to its administrators -- contact them
 > if you have further questions.
 
-all you have to do is join [#mdotp:gingershaped.computer](https://matrix.to/#/#mdotp:gingershaped.computer). you will then be able to access your presence at `https://mdotp.ginger.services/api/v1/<your mxid>`.
+all you have to do is join [#mdotp:gingershaped.computer](https://matrix.to/#/#mdotp:gingershaped.computer). you will then be able to access your presence at `https://mdotp.ginger.services/api/v1/user/<your mxid>`.
 
 ## example response
 see https://spec.matrix.org/v1.16/client-server-api/#mpresence for the response schema. some keys may be missing if your homeserver does not provide them.
@@ -38,7 +38,7 @@ possible error types:
 - `internal_error` (500): internal server error. please open an issue on this repository.
 
 ## websocket
-a websocket is available at `https://mdotp.ginger.services/api/v1/<your mxid>/ws`, which will send TEXT messages with the same schema as the REST API as soon as you connect and whenever your presence changes from then on. the websocket endpoint will return the same HTTP errors under the same circumstances as the REST endpoint.
+a websocket is available at `https://mdotp.ginger.services/api/v1/user/<your mxid>/ws`, which will send TEXT messages with the same schema as the REST API as soon as you connect and whenever your presence changes from then on. the websocket endpoint will return the same HTTP errors under the same circumstances as the REST endpoint.
 
 if you leave the bot's room, the websocket will be closed. further attempts to open it will return a `not_tracked` error.
 
